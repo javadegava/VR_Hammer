@@ -12,6 +12,9 @@ class VR_HAMMER_API AVRCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+	UPROPERTY(EditAnywhere)
+	float bonus = 0;
+
 public:
 	// Sets default values for this character's properties
 	AVRCharacter();
@@ -29,6 +32,5 @@ private:
 	ASkeletalMeshActor* weapon;
 	USkeletalMeshComponent* weaponComponent;
 	UPhysicsHandleComponent * PhysicsHandle;
-	
-	
+	FVector speed;	
 };

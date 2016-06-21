@@ -27,7 +27,7 @@ void AVRCharacter::BeginPlay()
 		if (ActorItr->GetName().Compare("Martillo") == 0) {
 			weapon = Mesh;
 
-			TArray<UActorComponent*> componentItr = weapon->GetComponents();
+			TSet<UActorComponent*> componentItr = weapon->GetComponents();
 
 			for (auto& component : componentItr)
 			{
@@ -39,6 +39,7 @@ void AVRCharacter::BeginPlay()
 			}
 		}
 	}
+	speed = FVector();
 }
 
 // Called every frame
@@ -48,7 +49,8 @@ void AVRCharacter::Tick( float DeltaTime )
 	FVector weaponLocation = weapon->GetActorLocation();
 	FRotator weaponRotator = weapon->GetActorRotation();
 	//UE_LOG(LogTemp, Warning, TEXT("X1 : %f \t Y1 : %f \t Z1 : %f"), weaponLocation.X, weaponLocation.Y, weaponLocation.Z);
-
+	//UE_LOG(LogTemp, Warning, TEXT("X1 : %f \t Y1 : %f \t Z1 : %f"), weaponRotator.Roll, weaponRotator.Pitch, weaponRotator.Yaw);
+	FQuat weaponQuat = weapon->GetActorQuat();
 
 	FVector aaaa = FVector(weaponComponent->GetCenterOfMass());
 	aaaa -= weaponComponent->GetBoneLocation("Root");
@@ -62,11 +64,10 @@ void AVRCharacter::Tick( float DeltaTime )
 
 
 
-
 	// Impulso sujecion
 	FVector force2 = FVector();
 	force2.Z += mass * this->GetWorldSettings()->GetGravityZ() * -1;
-	force2.Z += forcePitch;
+	//force2.Z += forcePitch;
 	weaponComponent->AddForceAtLocation(force2, weaponComponent->GetBoneLocation("Root"));
 
 
@@ -75,18 +76,53 @@ void AVRCharacter::Tick( float DeltaTime )
 
 
 	FVector locationWeapon = FVector(weaponComponent->GetBoneLocation("Root"));
-	locationWeapon.Y += distanceA;
+	FVector dist = FVector(0, 0, -distanceA);
+	//locationWeapon.Y += distanceA;
+	weaponRotator.Roll -= 90;
+	weaponRotator.Yaw -= 90;
+	//FRotationMatrix MyRotationMatrix(weaponRotator);
+	FMatrix MyRotationMatrix = FRotationMatrix::Make(weaponQuat);
+	//dist = MyRotationMatrix.TransformPosition(dist);
+	dist = dist.RotateAngleAxis(weaponRotator.Roll, FVector(0, 1, 0));
+	dist = dist.RotateAngleAxis(weaponRotator.Pitch, FVector(1, 0, 0));
+	dist = dist.RotateAngleAxis(weaponRotator.Yaw, FVector(0, 0, 1));
+
+
 	//UE_LOG(LogTemp, Warning, TEXT("X1 : %f \t Y1 : %f \t Z1 : %f"), weaponRotator.Pitch, weaponRotator.Yaw, weaponRotator.Roll);
 	//UE_LOG(LogTemp, Warning, TEXT("X1 : %f \t Y1 : %f \t Z1 : %f"), locationWeapon.X, locationWeapon.Y, locationWeapon.Z);
+	FVector locationPalanca = locationWeapon + dist;
+	/*
 	locationWeapon = locationWeapon.RotateAngleAxis(weaponRotator.Pitch, FVector(1, 0, 0));
 	locationWeapon = locationWeapon.RotateAngleAxis(weaponRotator.Yaw, FVector(0, 1, 0));
-	locationWeapon = locationWeapon.RotateAngleAxis(weaponRotator.Roll, FVector(0, 0, 1));
+	locationWeapon = locationWeapon.RotateAngleAxis(weaponRotator.Roll, FVector(0, 0, 1));*/
 	//UE_LOG(LogTemp, Warning, TEXT("X2 : %f \t Y1 : %f \t Z1 : %f"), locationWeapon.X, locationWeapon.Y, locationWeapon.Z);
 
-
+	
 	FVector force3 = FVector();
-	force3.Z -= forcePitch;
-	weaponComponent->AddForceAtLocation(force3, locationWeapon);
+	FVector force4 = FVector();
+	//UE_LOG(LogTemp, Warning, TEXT("X1 : %f"), forcePitch);
+	float angularGravity = sin((abs(weaponRotator.Pitch) + bonus) * 3.14159265 / 180);
+	//UE_LOG(LogTemp, Warning, TEXT("Angulo : %f"), weaponRotator.Pitch);
+	//UE_LOG(LogTemp, Warning, TEXT("Name : %f"), angularGravity);
+
+
+	speed += weapon->GetVelocity();
+	//UE_LOG(LogTemp, Warning, TEXT("X2 : %f \t Y1 : %f \t Z1 : %f"), speed.X, speed.Y, speed.Z);
+	UE_LOG(LogTemp, Warning, TEXT("X2 : %f"), abs(weaponRotator.Pitch));
+
+	force3.Y += forcePitch * angularGravity;
+	//force3 = MyRotationMatrix.TransformVector(force3);
+	force3 = force3.RotateAngleAxis(weaponRotator.Roll, FVector(0, 1, 0));
+	force3 = force3.RotateAngleAxis(weaponRotator.Pitch, FVector(1, 0, 0));
+	force3 = force3.RotateAngleAxis(weaponRotator.Yaw, FVector(0, 0, 1));
+	force4 = force3 * -1;
+	//force4 = MyRotationMatrix.TransformVector(force4);
+	//UE_LOG(LogTemp, Warning, TEXT("X1 : %f \t Y1 : %f \t Z1 : %f"), weaponRotator.Roll, weaponRotator.Pitch, weaponRotator.Yaw);
+	//UE_LOG(LogTemp, Warning, TEXT("XX1 : %f \t Y1 : %f \t Z1 : %f"), locationPalanca.X, locationPalanca.Y, locationPalanca.Z);
+	//UE_LOG(LogTemp, Warning, TEXT("X3 : %f \t Y1 : %f \t Z1 : %f"), force3.X, force3.Y, force3.Z);
+	//UE_LOG(LogTemp, Warning, TEXT("X4 : %f \t Y1 : %f \t Z1 : %f"), force4.X, force4.Y, force4.Z);
+	weaponComponent->AddForceAtLocation(force3, locationPalanca);
+	weaponComponent->AddForceAtLocation(force4, locationWeapon);
 
 
 }
