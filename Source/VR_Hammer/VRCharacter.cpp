@@ -39,7 +39,10 @@ void AVRCharacter::BeginPlay()
 			}
 		}
 	}
-	speed = FVector();
+	initialPosition = FVector(weaponComponent->GetBoneLocation("Root"));
+	weaponComponent->SetPhysicsLinearVelocity(FVector(), false);
+	weaponComponent->SetPhysicsAngularVelocity(FVector(), false);
+	first = true;
 }
 
 // Called every frame
@@ -58,9 +61,14 @@ void AVRCharacter::Tick( float DeltaTime )
 	float distanceA = 1;
 	float distanceB = aaaa.Size();
 	//distanceB = 42;
-	float forcePitch = mass * distanceB * this->GetWorldSettings()->GetGravityZ() * -1 / distanceA;
+	FVector massGravity = FVector(0, mass, 0);
+	massGravity = massGravity.RotateAngleAxis(weaponRotator.Roll, FVector(0, 1, 0));
+	massGravity = massGravity.RotateAngleAxis(weaponRotator.Pitch, FVector(1, 0, 0));
+	massGravity = massGravity.RotateAngleAxis(weaponRotator.Yaw, FVector(0, 0, 1));
+	float forcePitch = abs(massGravity.Z) * distanceB * this->GetWorldSettings()->GetGravityZ() * -1 / distanceA;
 	//forcePitch = 4733400;
 
+	//UE_LOG(LogTemp, Warning, TEXT("X2 : %f"), weaponRotator.Pitch);
 
 
 
@@ -101,16 +109,33 @@ void AVRCharacter::Tick( float DeltaTime )
 	FVector force3 = FVector();
 	FVector force4 = FVector();
 	//UE_LOG(LogTemp, Warning, TEXT("X1 : %f"), forcePitch);
-	float angularGravity = sin((abs(weaponRotator.Pitch) + bonus) * 3.14159265 / 180);
-	//UE_LOG(LogTemp, Warning, TEXT("Angulo : %f"), weaponRotator.Pitch);
-	//UE_LOG(LogTemp, Warning, TEXT("Name : %f"), angularGravity);
+	float angularGravity = sin((abs(weaponRotator.Pitch)) * 3.14159265 / 180);
+	//UE_LOG(LogTemp, Warning, TEXT("X2 : %f \t Y1 : %f \t Z1 : %f"), weaponComponent->GetPhysicsAngularVelocity().X, weaponComponent->GetPhysicsAngularVelocity().Y, weaponComponent->GetPhysicsAngularVelocity().Z);
 
 
-	speed += weapon->GetVelocity();
-	//UE_LOG(LogTemp, Warning, TEXT("X2 : %f \t Y1 : %f \t Z1 : %f"), speed.X, speed.Y, speed.Z);
-	UE_LOG(LogTemp, Warning, TEXT("X2 : %f"), abs(weaponRotator.Pitch));
 
-	force3.Y += forcePitch * angularGravity;
+	float forceArm = bonus;
+
+	float desiredPitch = 350.0;
+	FVector distanceDifferecePerForce = (initialPosition - locationWeapon)*forceArm;
+	weaponComponent->AddForceAtLocation(distanceDifferecePerForce, weaponComponent->GetBoneLocation("Root"));
+
+	forceArm *= (desiredPitch - weaponRotator.Clamp().Pitch);
+	if (forceArm > 0) {
+		forcePitch += forceArm;
+	}
+	else {
+		float mIntertia = mass * pow(distanceB, 2);
+		forcePitch -= mIntertia *  weaponComponent->GetPhysicsAngularVelocity().X;
+	}
+
+	if (!first) {
+		force3.Y += forcePitch;
+		UE_LOG(LogTemp, Warning, TEXT("Angulo : %f"), weaponRotator.Clamp().Pitch);
+	}
+	else {
+		first = false;
+	}
 	//force3 = MyRotationMatrix.TransformVector(force3);
 	force3 = force3.RotateAngleAxis(weaponRotator.Roll, FVector(0, 1, 0));
 	force3 = force3.RotateAngleAxis(weaponRotator.Pitch, FVector(1, 0, 0));
@@ -123,7 +148,6 @@ void AVRCharacter::Tick( float DeltaTime )
 	//UE_LOG(LogTemp, Warning, TEXT("X4 : %f \t Y1 : %f \t Z1 : %f"), force4.X, force4.Y, force4.Z);
 	weaponComponent->AddForceAtLocation(force3, locationPalanca);
 	weaponComponent->AddForceAtLocation(force4, locationWeapon);
-
 
 }
 

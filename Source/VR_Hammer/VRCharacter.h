@@ -32,5 +32,6 @@ private:
 	ASkeletalMeshActor* weapon;
 	USkeletalMeshComponent* weaponComponent;
 	UPhysicsHandleComponent * PhysicsHandle;
-	FVector speed;	
+	FVector initialPosition;
+	bool first;
 };
